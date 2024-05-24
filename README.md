@@ -1,5 +1,3 @@
-Creating a README.md file for your application is a great way to provide essential information on the project, including installation instructions, usage details, and any additional notes that might be helpful for users or other developers. Below is an example of what the README.md for your Weather Alert App might look like, which you can adjust based on your specific project details and configuration.
-
 ### README.md
 
 ```markdown
