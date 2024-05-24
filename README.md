@@ -42,13 +42,15 @@ To install Weather Alert App, follow these steps:
 
 ## Running the Application
 
-To run Weather Alert App, use the following command from the root directory of the project:
+To run Weather Alert App, use the following command from the root directory of the project, passing two IEMBOT ids as parameters:
 
 ```bash
-python3 app.py
+python3 app.py aly box
 ```
 
 This will start the Flask server on `http://localhost:5000`, where you can access the web interface.
+
+You will be connected to IEMBOTS for Albany (aly) and Boston (box). A list of bots is available [here](https://weather.im/iembot/).
 
 ## Using the Application
 
