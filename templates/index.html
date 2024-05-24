@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather Alert App</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Weather Alert App</h1>
+        <div class="selectors">
+            <div class="refresh-selector">
+                <label for="refresh-time">Refresh Time:</label>
+                <select id="refresh-time">
+                    <option value="60">60 seconds</option>
+                    <option value="45">45 seconds</option>
+                    <option value="30">30 seconds</option>
+                </select>
+                <span id="countdown-since-refresh"></span>
+            </div>
+            <div class="theme-selector">
+                <label for="theme">Theme:</label>
+                <select id="theme">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+        </div>
+    </header>
+    <div class="feeds-container">
+        <div class="feed-container">
+            <h2>DVNChat Feed</h2>
+            <p class="last-update">Last updated: <span id="last-update-time-dvnchat"></span></p>
+            <p class="countdown">Time since last update: <span id="countdown-dvnchat"></span></p>
+            <div id="feed-dvnchat" class="feed"></div>
+            <div class="pagination">
+                <button id="prevPage-dvnchat">Previous</button>
+                <button id="nextPage-dvnchat">Next</button>
+            </div>
+        </div>
+        <div class="feed-container">
+            <h2>DMXChat Feed</h2>
+            <p class="last-update">Last updated: <span id="last-update-time-dmxchat"></span></p>
+            <p class="countdown">Time since last update: <span id="countdown-dmxchat"></span></p>
+            <div id="feed-dmxchat" class="feed"></div>
+            <div class="pagination">
+                <button id="prevPage-dmxchat">Previous</button>
+                <button id="nextPage-dmxchat">Next</button>
+            </div>
+        </div>
+    </div>
+    <!-- Cow Stats Request Form -->
+    <div>
+        <h2>Cow Stats</h2>
+        <input type="text" id="wfoInput" placeholder="Enter WFO (e.g., DSM)">
+        <input type="text" id="phenomenaInput" placeholder="Enter Phenomena (e.g., SV)">
+        <button id="fetchCowStatsButton">Get Cow Stats</button>
+        <div id="cowStatsDisplay" class="cow-stats-display"></div>
+    </div>
+    <audio id="notification-sound" src="static/sounds/notification-sound.wav"></audio>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.min.js"></script>
+    <script type="module" src="static/js/main.js"></script>
+</body>
+</html>
