@@ -37,22 +37,36 @@ body.dark-mode h1 {
 }
 
 .refresh-selector,
-.theme-selector {
+.theme-selector,
+.testsound-selector {
     display: flex;
     align-items: center;
     margin-left: 20px;
 }
 
 .refresh-selector label,
-.theme-selector label {
+.theme-selector label,
+.testsound-selector label {
     margin-right: 10px;
 }
 
 .refresh-selector select,
-.theme-selector select {
+.theme-selector select,
+.testsound-selector select {
     padding: 5px;
     border-radius: 5px;
 }
+
+.refresh-selector button,
+.theme-selector button,
+.testsound-selector button {
+    padding: 5px;
+    border-radius: 5px;
+}
+
+
+
+
 
 .feeds-container {
     display: flex;

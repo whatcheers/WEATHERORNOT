@@ -24,40 +24,37 @@
                     <option value="dark">Dark</option>
                 </select>
             </div>
+            <div class="testsound-selector">
+                <label for="testsound">Test Sound:</label>
+                <img id="test-sound-image" src="static/images/soundtest_modelight.png" height="20px"></img>
+            </div>
         </div>
     </header>
     <div class="feeds-container">
         <div class="feed-container">
-            <h2>DVNChat Feed</h2>
-            <p class="last-update">Last updated: <span id="last-update-time-dvnchat"></span></p>
-            <p class="countdown">Time since last update: <span id="countdown-dvnchat"></span></p>
-            <div id="feed-dvnchat" class="feed"></div>
+            <h2>{{ leftchatname }} Chat Feed</h2>
+            <p class="last-update">Last updated: <span id="last-update-time-leftchat"></span></p>
+            <p class="countdown">Time since last update: <span id="countdown-leftchat"></span></p>
+            <div id="feed-leftchat" class="feed"></div>
             <div class="pagination">
-                <button id="prevPage-dvnchat">Previous</button>
-                <button id="nextPage-dvnchat">Next</button>
+                <button id="prevPage-leftchat">Previous</button>
+                <button id="nextPage-leftchat">Next</button>
             </div>
         </div>
         <div class="feed-container">
-            <h2>DMXChat Feed</h2>
-            <p class="last-update">Last updated: <span id="last-update-time-dmxchat"></span></p>
-            <p class="countdown">Time since last update: <span id="countdown-dmxchat"></span></p>
-            <div id="feed-dmxchat" class="feed"></div>
+            <h2>{{ rightchatname }} Chat Feed</h2>
+            <p class="last-update">Last updated: <span id="last-update-time-rightchat"></span></p>
+            <p class="countdown">Time since last update: <span id="countdown-rightchat"></span></p>
+            <div id="feed-rightchat" class="feed"></div>
             <div class="pagination">
-                <button id="prevPage-dmxchat">Previous</button>
-                <button id="nextPage-dmxchat">Next</button>
+                <button id="prevPage-rightchat">Previous</button>
+                <button id="nextPage-rightchat">Next</button>
             </div>
         </div>
-    </div>
-    <!-- Cow Stats Request Form -->
-    <div>
-        <h2>Cow Stats</h2>
-        <input type="text" id="wfoInput" placeholder="Enter WFO (e.g., DSM)">
-        <input type="text" id="phenomenaInput" placeholder="Enter Phenomena (e.g., SV)">
-        <button id="fetchCowStatsButton">Get Cow Stats</button>
-        <div id="cowStatsDisplay" class="cow-stats-display"></div>
     </div>
     <audio id="notification-sound" src="static/sounds/notification-sound.wav"></audio>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.min.js"></script>
     <script type="module" src="static/js/main.js"></script>
+
 </body>
 </html>
