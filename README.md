@@ -42,20 +42,12 @@ To install Weather Alert App, follow these steps:
    pip install -r requirements.txt
    ```
 
-4. **Install JavaScript dependencies and build the assets (if any):**
-   ```bash
-   cd static
-   npm install
-   npm run build  # Assuming there is a script in package.json for this
-   cd ..
-   ```
-
 ## Running the Application
 
 To run Weather Alert App, use the following command from the root directory of the project:
 
 ```bash
-flask run --host=0.0.0.0 --port=5000
+python3 app.py
 ```
 
 This will start the Flask server on `http://localhost:5000`, where you can access the web interface.
