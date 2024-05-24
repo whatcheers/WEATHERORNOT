@@ -4,21 +4,48 @@ import requests
 import xml.etree.ElementTree as ET
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+import sys
+
+# Check if both command-line arguments are provided
+if len(sys.argv) != 3:
+    print("")
+    print("ERROR: You need to pass two IEMBOT ids as parameters")
+    print("")
+    print("     Example: 'python app.py dvn tbw'")
+    print("")
+    print("     Result: Davenport IEMBOT on left side, Tampa IEMBOT on the right")
+    print("")
+    print("You can find a list of valid IEMBOT ids at https://weather.im/iembot/")
+    sys.exit(1)
+
+# Extract IEMBOT ids from command-line arguments
+leftchat = sys.argv[1]
+rightchat = sys.argv[2]
+
+# Define the base URLs
+BASE_URL = 'https://weather.im/iembot-rss/room/'
+
+# Construct the feed URLs
+leftchat_url = f"{BASE_URL}{leftchat}chat.xml"
+rightchat_url = f"{BASE_URL}{rightchat}chat.xml"
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 
+# Set the UTC timezone explicitly
+utc_timezone = timezone.utc
+
 FEED_URLS = {
-    'dvnchat': 'https://weather.im/iembot-rss/room/dvnchat.xml',
-    'dmxchat': 'https://weather.im/iembot-rss/room/dmxchat.xml'
+    'leftchat': leftchat_url,
+    'rightchat': rightchat_url
 }
 INTERVAL = 60  # Fetch interval in seconds
 
 data_store = {
-    'dvnchat': {'items': [], 'last_update_time': None},
-    'dmxchat': {'items': [], 'last_update_time': None}
+    'leftchat': {'items': [], 'last_update_time': None},
+    'rightchat': {'items': [], 'last_update_time': None}
 }
 
 def format_description(description):
@@ -27,6 +54,7 @@ def format_description(description):
 def fetch_and_update_feed(feed_name, url):
     while True:
         try:
+            print('\033[92mGETTING UPDATE FROM: ' + url + '\033[0m')
             response = requests.get(url)
             response.raise_for_status()
             xml_data = response.content
@@ -45,6 +73,7 @@ def fetch_and_update_feed(feed_name, url):
                 })
             data_store[feed_name]['items'] = items
             data_store[feed_name]['last_update_time'] = datetime.utcnow().isoformat() + 'Z'
+            #data_store[feed_name]['last_update_time'] = datetime.now(timezone.utc).isoformat(timespec='seconds') + 'Z'
             socketio.emit(f'update_feed_{feed_name}', {
                 'items': items[:10],
                 'last_update_time': data_store[feed_name]['last_update_time']
@@ -79,7 +108,9 @@ def handle_request_cow_stats(data):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    leftchatname = leftchat.upper()
+    rightchatname = rightchat.upper()
+    return render_template('index.html', leftchatname=leftchatname, rightchatname=rightchatname)
 
 @app.route('/feed/<feed_name>', methods=['GET'])
 def get_feed(feed_name):

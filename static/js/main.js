@@ -1,8 +1,8 @@
 import { Feed } from './feed.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const dvnchatFeed = new Feed('dvnchat');
-    const dmxchatFeed = new Feed('dmxchat');
+    const leftchatFeed = new Feed('leftchat');
+    const rightchatFeed = new Feed('rightchat');
 
     const refreshTimeSelect = document.getElementById('refresh-time');
     refreshTimeSelect.addEventListener('change', (event) => {

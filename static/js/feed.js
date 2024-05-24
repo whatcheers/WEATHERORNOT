@@ -207,7 +207,7 @@ export class Feed {
             const now = new Date();
             const diff = now - this.lastUpdateTime;
             const seconds = Math.floor(diff / 1000);
-            this.countdownSinceRefreshElement.textContent = '(Last refresh: ${seconds}s ago)';
+            this.countdownSinceRefreshElement.textContent = `(Last refresh: ${seconds}s ago)`;
         } else {
             this.countdownSinceRefreshElement.textContent = '(No refresh yet)';
         }
