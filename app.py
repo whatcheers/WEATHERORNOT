@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 from flask_socketio import SocketIO
+from datetime import datetime, timezone
 import requests
 import xml.etree.ElementTree as ET
 import threading
 import time
-from datetime import datetime, timezone
 import sys
 
 # Check if both command-line arguments are provided
@@ -108,9 +108,11 @@ def handle_request_cow_stats(data):
 
 @app.route('/')
 def index():
+    #mode = request.cookies.get('mode', 'light')  # Default to light mode if no cookie is set
     leftchatname = leftchat.upper()
     rightchatname = rightchat.upper()
     return render_template('index.html', leftchatname=leftchatname, rightchatname=rightchatname)
+    #return render_template('index.html', leftchatname=leftchatname, rightchatname=rightchatname, mode=mode)
 
 @app.route('/feed/<feed_name>', methods=['GET'])
 def get_feed(feed_name):
@@ -125,6 +127,14 @@ def get_feed(feed_name):
         'total': len(items),
         'last_update_time': last_update_time
     })
+
+@app.route('/set_mode/<mode>')
+def set_mode(mode):
+    if mode in ['light', 'dark']:
+        resp = make_response('Mode set to ' + mode)
+        resp.set_cookie('mode', mode, max_age=30*24*60*60)  # Cookie lasts for 30 days
+        return resp
+    return 'Invalid mode', 400
 
 @socketio.on('connect')
 def handle_connect():

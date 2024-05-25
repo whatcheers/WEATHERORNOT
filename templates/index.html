@@ -3,6 +3,29 @@
 <head>
     <title>Weather Alert App</title>
     <link rel="stylesheet" href="static/css/styles.css">
+    <script>
+        // Client-side theme initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            const mode = getCookie('mode');
+            const themeSelect = document.getElementById('theme');
+            const testSoundImage = document.getElementById('test-sound-image');
+
+            if (mode === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeSelect.value = 'dark'; // Update theme selector dropdown
+                testSoundImage.src = 'static/images/soundtest_modedark.png'; // Change to dark mode image
+            } else {
+		        themeSelect.value = 'light'; // Update theme selector dropdown
+                testSoundImage.src = 'static/images/soundtest_modelight.png'; // Change to default/light mode image
+            }
+        });
+        // Helper function to get cookie value by name
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+    </script>
 </head>
 <body>
     <header>
@@ -20,8 +43,8 @@
             <div class="theme-selector">
                 <label for="theme">Theme:</label>
                 <select id="theme">
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
+                    <option value="light" {% if mode == 'light' %}selected{% endif %}>Light Mode</option>
+                    <option value="dark" {% if mode == 'dark' %}selected{% endif %}>Dark Mode</option>
                 </select>
             </div>
             <div class="testsound-selector">

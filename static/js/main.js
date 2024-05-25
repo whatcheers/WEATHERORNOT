@@ -22,6 +22,21 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         testSoundImage.src = 'static/images/soundtest_modelight.png'; // Change to default/light mode image
     }
+
+    // Save the selected theme in a cookie by sending a request to Flask
+    fetch(`/set_mode/${selectedTheme}`)
+        .then(response => {
+        if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text();
+        })
+        .then(data => {
+            console.log(data);
+        })
+        .catch(error => {
+            console.error('There was a problem with the fetch operation:', error);
+        });
     });
 
     const testMySound = document.getElementById('test-sound-image');
