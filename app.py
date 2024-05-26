@@ -6,6 +6,11 @@ import xml.etree.ElementTree as ET
 import threading
 import time
 import sys
+import configparser
+import json
+import re
+from mappings import map_nws_product_to_hass_severity
+import paho.mqtt.client as mqtt
 
 # Check if both command-line arguments are provided
 if len(sys.argv) != 3:
@@ -18,6 +23,19 @@ if len(sys.argv) != 3:
     print("")
     print("You can find a list of valid IEMBOT ids at https://weather.im/iembot/")
     sys.exit(1)
+
+config = configparser.ConfigParser()
+config.read('secrets.ini')
+
+# Retrieve MQTT config from secrets.ini
+mqtt_broker = config['MQTT']['broker']
+mqtt_port = int(config['MQTT']['port']) # Force to integer
+mqtt_user = config['MQTT']['user']
+mqtt_pass = config['MQTT']['pass']
+mqtt_topicleft = config['MQTT']['topicleft']
+mqtt_topicright = config['MQTT']['topicright']
+# Create an MQTT client instance
+mqttclient = mqtt.Client()
 
 # Extract IEMBOT ids from command-line arguments
 leftchat = sys.argv[1]
@@ -78,6 +96,12 @@ def fetch_and_update_feed(feed_name, url):
                 'items': items[:10],
                 'last_update_time': data_store[feed_name]['last_update_time']
             })
+            if items and items[:10]:
+                first_item = items[:10][0]
+                payload_for_mqtt = format_payload_for_mqtt(first_item)
+                send_to_hass_mqtt(mqtt_topicleft, payload_for_mqtt)
+                #send_to_hass_mqtt(mqtt_topicleft,'<ha-alert alert-type=\\"info\\" title=\\"this\\">1\\n4</ha-alert>')
+                send_to_hass_mqtt(mqtt_topicright, 'derp')
         except requests.RequestException as e:
             print(f'Error fetching the feed {feed_name}: {e}')
         except ET.ParseError as e:
@@ -112,7 +136,6 @@ def index():
     leftchatname = leftchat.upper()
     rightchatname = rightchat.upper()
     return render_template('index.html', leftchatname=leftchatname, rightchatname=rightchatname)
-    #return render_template('index.html', leftchatname=leftchatname, rightchatname=rightchatname, mode=mode)
 
 @app.route('/feed/<feed_name>', methods=['GET'])
 def get_feed(feed_name):
@@ -152,6 +175,54 @@ def handle_update_interval(data):
     global INTERVAL
     INTERVAL = int(data['interval'])
     print(f"Updated interval to {INTERVAL} seconds")
+
+def format_payload_for_mqtt(json_data):
+    json_text = json.dumps(json_data)
+    # Parse the JSON text into a Python dictionary
+    parsed_json = json.loads(json_text)
+    # Access the parsed data
+    json_found_title = parsed_json['title']
+    json_found_description = parsed_json['description']
+    json_found_pubdate = parsed_json['pub_date']
+    json_found_link = parsed_json['link']
+    # parse the title for severity
+    match = re.search(r'\((.*?)\)', json_found_title)
+    if match:
+        code_in_parenthesis = match.group(1)
+        severity_based_on_nws_product = map_nws_product_to_hass_severity.get(code_in_parenthesis, None)
+        if severity_based_on_nws_product:
+            severity = severity_based_on_nws_product # we found the severity
+        else:
+            severity = "info" # we had a parenthetical code in the json title but it didn't match mapping dictionary
+    else:
+        severity = "info" # there was no code in parenthesis in the json title so regex didn't match
+    # clean up the description
+    mqtt_description = json_found_description
+    mqtt_description = mqtt_description.replace('\n', '<br>') # change newline format, it's easier to deal with
+    mqtt_description = mqtt_description.replace('<pre style="white-space: pre-wrap;">','')
+    mqtt_description = mqtt_description.replace('</pre>','')
+    mqtt_description = mqtt_description.replace('\'','\'\'') # escape single quotes for MQTT by changing ' to ''
+    mqtt_description = mqtt_description.strip()
+    mqtt_payload = "<ha-alert alert-type=\"" + severity + "\" title=\"" + json_found_title + "\">" + mqtt_description + "</ha-alert>"
+    mqtt_payload = mqtt_payload.replace('"','\\\"')
+    #mqtt_payload = mqtt_payload.replace('$$','')
+    return mqtt_payload
+
+def send_to_hass_mqtt(topic, text):
+    mqttclient = mqtt.Client()
+    mqttclient.username_pw_set(mqtt_user, mqtt_pass)
+
+    def on_connect(mqttclient, userdata, flags, rc):
+        print(f"Connected to MQTT with result code {rc}")
+        mqttclient.publish(topic, '{"payload":"' + text + '"}')
+        #print(f"Published to MQTT - {topic}: {text}")
+        mqttclient.disconnect()
+
+    mqttclient.on_connect = on_connect
+    mqttclient.connect(mqtt_broker, mqtt_port, 60)
+    mqttclient.loop_start()
+    time.sleep(2)
+    mqttclient.loop_stop()
 
 if __name__ == '__main__':
     for feed_name, url in FEED_URLS.items():
