@@ -9,7 +9,7 @@ import sys
 import configparser
 import json
 import re
-from mappings import map_nws_product_to_hass_severity
+from mappings import map_nws_product_to_hass_severity, map_nws_product_code_to_description
 import paho.mqtt.client as mqtt
 
 # Check if both command-line arguments are provided
@@ -99,9 +99,10 @@ def fetch_and_update_feed(feed_name, url):
             if items and items[:10]:
                 first_item = items[:10][0]
                 payload_for_mqtt = format_payload_for_mqtt(first_item)
-                send_to_hass_mqtt(mqtt_topicleft, payload_for_mqtt)
-                #send_to_hass_mqtt(mqtt_topicleft,'<ha-alert alert-type=\\"info\\" title=\\"this\\">1\\n4</ha-alert>')
-                send_to_hass_mqtt(mqtt_topicright, 'derp')
+                if feed_name == 'leftchat':
+                    send_to_hass_mqtt(mqtt_topicleft, payload_for_mqtt)
+                else:
+                    send_to_hass_mqtt(mqtt_topicright, payload_for_mqtt)
         except requests.RequestException as e:
             print(f'Error fetching the feed {feed_name}: {e}')
         except ET.ParseError as e:
@@ -185,37 +186,55 @@ def format_payload_for_mqtt(json_data):
     json_found_description = parsed_json['description']
     json_found_pubdate = parsed_json['pub_date']
     json_found_link = parsed_json['link']
-    # parse the title for severity
-    match = re.search(r'\((.*?)\)', json_found_title)
-    if match:
-        code_in_parenthesis = match.group(1)
-        severity_based_on_nws_product = map_nws_product_to_hass_severity.get(code_in_parenthesis, None)
-        if severity_based_on_nws_product:
-            severity = severity_based_on_nws_product # we found the severity
-        else:
-            severity = "info" # we had a parenthetical code in the json title but it didn't match mapping dictionary
-    else:
-        severity = "info" # there was no code in parenthesis in the json title so regex didn't match
+    # parse the description for severity
+    severity = identify_nws_product_severity(json_found_description)
     # clean up the description
     mqtt_description = json_found_description
+    mqtt_description_lines = mqtt_description.split('\n')
+    if len(mqtt_description_lines) >= 4:
+        mqtt_description = '\n'.join(mqtt_description_lines[3:])
+    mqtt_description = mqtt_description.replace('<pre style="white-space: pre-wrap;">','').replace('</pre>','')
     mqtt_description = mqtt_description.replace('\n', '<br>') # change newline format, it's easier to deal with
-    mqtt_description = mqtt_description.replace('<pre style="white-space: pre-wrap;">','')
-    mqtt_description = mqtt_description.replace('</pre>','')
     mqtt_description = mqtt_description.replace('\'','\'\'') # escape single quotes for MQTT by changing ' to ''
     mqtt_description = mqtt_description.strip()
+    # format a payload that Home Assistant's Markdown card will render. Using syntax here: https://www.home-assistant.io/dashboards/markdown/#ha-alert
     mqtt_payload = "<ha-alert alert-type=\"" + severity + "\" title=\"" + json_found_title + "\">" + mqtt_description + "</ha-alert>"
     mqtt_payload = mqtt_payload.replace('"','\\\"')
     #mqtt_payload = mqtt_payload.replace('$$','')
     return mqtt_payload
+
+def identify_nws_product_severity(nws_product_description):
+    # NWS products have the product code as the third line, first three characters
+    lines = nws_product_description.split('\n')
+    if len(lines) >= 3:
+        third_line_first_three_chars = lines[2][:3] # second index is third line, grab first three characters
+        severity_from_dictionary = map_nws_product_to_hass_severity.get(third_line_first_three_chars, None)
+        description_from_dictionary = map_nws_product_code_to_description.get(third_line_first_three_chars, None)
+
+        product_code_color = "\033[32m" #green
+        description_color = "\033[36m" #cyan
+        severity_color = "\033[34m" #blue
+        reset_color = "\033[0m"
+
+        print(f"{product_code_color} Product code: \"{third_line_first_three_chars}\"{description_color} Desc: \"{description_from_dictionary}\"{severity_color} Sev: \"{severity_from_dictionary}\"{reset_color}")
+
+    else:
+        severity_from_dictionary = "info"
+
+        product_code_color = "\033[32m" #green
+        description_color = "\033[31m" #red
+        severity_color = "\033[33" #yellow
+        reset_color = "\033[0m"
+
+        print(f"{product_code_color} Product code: \"{third_line_first_three_chars}\"{description_color} Desc: \"NOT IN DICTIONARY\"{severity_color} Sev: \"Info (assumed)\"{reset_color}")
+    return severity_from_dictionary
 
 def send_to_hass_mqtt(topic, text):
     mqttclient = mqtt.Client()
     mqttclient.username_pw_set(mqtt_user, mqtt_pass)
 
     def on_connect(mqttclient, userdata, flags, rc):
-        print(f"Connected to MQTT with result code {rc}")
         mqttclient.publish(topic, '{"payload":"' + text + '"}')
-        #print(f"Published to MQTT - {topic}: {text}")
         mqttclient.disconnect()
 
     mqttclient.on_connect = on_connect
