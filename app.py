@@ -88,12 +88,13 @@ def generate_timestamp_for_console():
     return colored_timestamp
 
 def generate_LR_coloring_for_console(feed_name):
-    formatted_feed_name = f"[{feed_name[0].upper()} SIDE]"
     if feed_name[0].upper() == "R":
         color_to_use = colorR
+        chatroom = rightchat
     else:
         color_to_use = colorL
-    return color_to_use + formatted_feed_name
+        chatroom = leftchat
+    return f"{color_to_use}[{chatroom.upper()}: {feed_name[0].upper()} side]"
 
 def format_description(description):
     return description.replace('<pre>', '<pre style="white-space: pre-wrap;">')
@@ -101,7 +102,7 @@ def format_description(description):
 def fetch_and_update_feed(feed_name, url):
     while True:
         try:
-            print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [Getting] {url}{reset_color}")
+            print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [HttpGetReq] {url.replace(f"{leftchat}chat.xml",f"{ul_start}{leftchat}{ul_end}chat.xml").replace(f"{rightchat}chat.xml",f"{ul_start}{rightchat}{ul_end}chat.xml")}{reset_color}")
             response = requests.get(url)
             response.raise_for_status()
             xml_data = response.content
@@ -128,7 +129,7 @@ def fetch_and_update_feed(feed_name, url):
             if items and items[:10]:
                 first_item = items[:10][0]
                 payload_for_mqtt = format_payload_for_mqtt(first_item, feed_name)
-                print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [Publish] mqtt://{mqtt_broker}:{mqtt_port}{reset_color}")
+                print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [Publishing] mqtt://{mqtt_broker}:{mqtt_port}{reset_color}")
                 if feed_name == 'leftchat':
                     send_to_hass_mqtt(mqtt_topicleft, payload_for_mqtt)
                 else:
@@ -246,7 +247,7 @@ def identify_nws_product_severity(nws_product_description, feed_name):
         severity_from_dictionary = map_nws_product_to_hass_severity.get(third_line_first_three_chars, None)
         description_from_dictionary = map_nws_product_code_to_description.get(third_line_first_three_chars, None)
 
-        print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [Payload] Office: \"{ul_start}{third_line_second_three_characters}{ul_end}\" Prod: \"{ul_start}{third_line_first_three_chars}{ul_end}\" Desc: \"{ul_start}{description_from_dictionary}{ul_end}\" Sev: \"{ul_start}{severity_from_dictionary}{ul_end}\"{reset_color}")
+        print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [Discovered] Office: \"{ul_start}{third_line_second_three_characters}{ul_end}\" Prod: \"{ul_start}{third_line_first_three_chars}{ul_end}\" Desc: \"{ul_start}{description_from_dictionary}{ul_end}\" Sev: \"{ul_start}{severity_from_dictionary}{ul_end}\"{reset_color}")
     else:
         severity_from_dictionary = "info"
 
@@ -254,7 +255,7 @@ def identify_nws_product_severity(nws_product_description, feed_name):
         product_code_color = "\033[31m" #red
         description_color = "\033[31m" #red
         severity_color = "\033[31m" #red
-        print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [Payload] Office: \"{ul_start}{third_line_second_three_characters}{ul_end}\" Prod: \"{ul_start}{third_line_first_three_chars}{ul_end}\" Desc: \"{ul_start}NOT IN DICTIONARY{ul_end}\" Sev: \"{ul_start}info (assumed){ul_end}\"{reset_color}")
+        print(f"{generate_timestamp_for_console()} {generate_LR_coloring_for_console(feed_name)} [Discovered] Office: \"{ul_start}{third_line_second_three_characters}{ul_end}\" Prod: \"{ul_start}{third_line_first_three_chars}{ul_end}\" Desc: \"{ul_start}NOT IN DICTIONARY{ul_end}\" Sev: \"{ul_start}info (assumed){ul_end}\"{reset_color}")
     return severity_from_dictionary
 
 def send_to_hass_mqtt(topic, text):
