@@ -1,3 +1,6 @@
 env/
 venv/
 /secrets.ini
+__pycache__/
+*.pyc
+log.txt

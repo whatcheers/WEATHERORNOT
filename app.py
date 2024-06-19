@@ -11,23 +11,46 @@ import json
 import re
 from mappings import map_nws_product_to_hass_severity, map_nws_product_code_to_description
 import paho.mqtt.client as mqtt
+import os
+import logging
 
 # These lines are so Flask shuts the fuck up in the console so I can see wtf is happening
-import logging
 log = logging.getLogger('werkzeug')
-log.setLevel(logging.WARNING)
+log.setLevel(logging.ERROR)
 
+# Configure logging for main threads
+logging.basicConfig(filename='log.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Report last modified datetime of this app.py file to console as versioning information
+def get_last_modified_time(file_path):
+    try:
+        # Get the last modified timestamp of the file
+        modified_time = os.path.getmtime(file_path)
+        # Convert the timestamp to UTC
+        utc_time = datetime.fromtimestamp(modified_time, timezone.utc)
+        # Format the UTC timestamp as a string
+        utc_readable_time = utc_time.strftime('%Y-%m-%d_%H-%M-%S')
+        return utc_readable_time
+    except OSError as e:
+        print(f"Error: {e}")
+        return "unknown"
+
+# Log initialization stuff
+file_path = 'app.py'
+app_version = get_last_modified_time(file_path)
+logging.info(f"Version Key: {app_version}")
 
 # Check if both command-line arguments are provided
 if len(sys.argv) != 3:
     print("")
     print("ERROR: You need to pass two IEMBOT ids as parameters")
     print("")
-    print("     Example: 'python app.py dvn tbw'")
+    print("     Example: 'python app.py tbw mlb'")
     print("")
-    print("     Result: Davenport IEMBOT on left side, Tampa IEMBOT on the right")
+    print("     Result: Tampa IEMBOT on left side, Melbourne IEMBOT on the right")
     print("")
     print("You can find a list of valid IEMBOT ids at https://weather.im/iembot/")
+    logging.error(f"app.py called without appropriate parameters as in 'python app.py tbw mlb'")
     sys.exit(1)
 
 config = configparser.ConfigParser()
@@ -46,6 +69,8 @@ mqttclient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 # Extract IEMBOT ids from command-line arguments
 leftchat = sys.argv[1]
 rightchat = sys.argv[2]
+
+logging.info(f"Left Chat: {leftchat} | Right Chat: {rightchat}")
 
 # Define the base URLs
 BASE_URL = 'https://weather.im/iembot-rss/room/'
@@ -72,8 +97,8 @@ data_store = {
     'rightchat': {'items': [], 'last_update_time': None}
 }
 
-colorL = "\033[96m" #color for console messages related to leftchat
-colorR = "\033[94m" #color for console messages related to rightchat
+colorL = "\033[33m" #"\033[96m" #color for console messages related to leftchat
+colorR = "\033[35m" #"\033[94m" #color for console messages related to rightchat
 reset_color = '\033[0m'  # resets color to default
 ul_start = '\033[4m'  # Start underline
 ul_end = '\033[24m'  # End underline
@@ -136,8 +161,10 @@ def fetch_and_update_feed(feed_name, url):
                     send_to_hass_mqtt(mqtt_topicright, payload_for_mqtt)
         except requests.RequestException as e:
             print(f"{generate_timestamp_for_console()}\033[31m Error fetching the feed {feed_name}: {e}{reset_color}")
+            logging.error(f"Error fetching the feed {feed_name}: {e}")
         except ET.ParseError as e:
             print(f"{generate_timestamp_for_console()}\033[31m Error parsing the XML {feed_name}: {e}{reset_color}")
+            logging.error(f"Error parsing the XML {feed_name}: {e}")
         time.sleep(INTERVAL)
 
 def fetch_cow_stats(wfo=None, phenomena=None, callback=None):
@@ -171,17 +198,22 @@ def index():
 
 @app.route('/feed/<feed_name>', methods=['GET'])
 def get_feed(feed_name):
-    page = int(request.args.get('page', 1))
-    per_page = 10
-    start = (page - 1) * per_page
-    end = start + per_page
-    items = data_store.get(feed_name, {}).get('items', [])
-    last_update_time = data_store.get(feed_name, {}).get('last_update_time', None)
-    return jsonify({
-        'items': items[start:end],
-        'total': len(items),
-        'last_update_time': last_update_time
-    })
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = 10
+        start = (page - 1) * per_page
+        end = start + per_page
+        items = data_store.get(feed_name, {}).get('items', [])
+        last_update_time = data_store.get(feed_name, {}).get('last_update_time', None)
+        return jsonify({
+            'items': items[start:end],
+            'total': len(items),
+            'last_update_time': last_update_time
+        })
+    except Exception as e:
+        error_message = f"Error fetching feed '{feed_name}': {e}"
+        logging.error(error_message)
+        return jsonify({'error': error_message}), 500
 
 @app.route('/set_mode/<mode>')
 def set_mode(mode):
@@ -259,20 +291,30 @@ def identify_nws_product_severity(nws_product_description, feed_name):
     return severity_from_dictionary
 
 def send_to_hass_mqtt(topic, text):
-    mqttclient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
-    mqttclient.username_pw_set(mqtt_user, mqtt_pass)
-
-    def on_connect(mqttclient, userdata, flags, rc):
-        mqttclient.publish(topic, '{"payload":"' + text + '"}')
-        mqttclient.disconnect()
-
-    mqttclient.on_connect = on_connect
-    mqttclient.connect(mqtt_broker, mqtt_port, 60)
-    mqttclient.loop_start()
-    time.sleep(2)
-    mqttclient.loop_stop()
+    try:
+        mqttclient = mqtt.Client()
+        mqttclient.username_pw_set(mqtt_user, mqtt_pass)
+        def on_connect(mqttclient, userdata, flags, rc):
+            if rc == 0:
+                mqttclient.publish(topic, '{"payload":"' + text + '"}')
+                mqttclient.disconnect()
+            else:
+                print(f"Connection failed with code {rc}")
+                logging.error(f"MQTT Connection failed with code {rc}")
+        mqttclient.on_connect = on_connect
+        mqttclient.connect(mqtt_broker, mqtt_port, 60)
+        mqttclient.loop_start()
+        time.sleep(2)
+        mqttclient.loop_stop()
+    except Exception as e:
+        print(f"MQTT Error: {e}")
+        logging.error(f"MQTT Error: {e}")
 
 if __name__ == '__main__':
+    file_path = 'app.py'
+    last_modified = get_last_modified_time(file_path)
+    if last_modified:
+        print(f"\n\nVersion Key: \n\n\t\033[92m{last_modified}\033[0m\n\t({file_path} last modified UTC)\n\n")
     for feed_name, url in FEED_URLS.items():
         thread = threading.Thread(target=fetch_and_update_feed, args=(feed_name, url))
         thread.daemon = True
