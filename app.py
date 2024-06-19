@@ -194,7 +194,7 @@ def index():
     #mode = request.cookies.get('mode', 'light')  # Default to light mode if no cookie is set
     leftchatname = leftchat.upper()
     rightchatname = rightchat.upper()
-    return render_template('index.html', leftchatname=leftchatname, rightchatname=rightchatname)
+    return render_template('index.html', leftchatname=leftchatname, rightchatname=rightchatname, version=app_version)
 
 @app.route('/feed/<feed_name>', methods=['GET'])
 def get_feed(feed_name):
